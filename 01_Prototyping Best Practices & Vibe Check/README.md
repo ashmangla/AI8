@@ -37,15 +37,15 @@ You will be required to submit a link to your GitHub, as well as screenshots of 
 Please evaluate your system on the following questions:
 
 1. Explain the concept of object-oriented programming in simple terms to a complete beginner. 
-    - Aspect Tested:
+    - Aspect Tested:(1) Content was good, simple and explanatory (2) UI could be improved with ques on top and answer on the bottom and wider plane, open AI key window could be hidden
 2. Read the following paragraph and provide a concise summary of the key points…
-    - Aspect Tested:
+    - Aspect Tested: it did a good summarization without losing any information in the main paragraph
 3. Write a short, imaginative story (100–150 words) about a robot finding friendship in an unexpected place.
-    - Aspect Tested:
+    - Aspect Tested:(1)Story structure was good with starting hook, middle and conclusion (2) content of the story followed what was asked and had good details(3)There are some logic gaps in some of the sentences like e.g "how would you turn wires into cosy blankets", "but left forgotton - how does it continue to function?"
 4. If a store sells apples in packs of 4 and oranges in packs of 3, how many packs of each do I need to buy to get exactly 12 apples and 9 oranges?
-    - Aspect Tested:
+    - Aspect Tested:(1) Correctness and flow of logic : It was correct and well explained (2) Conversational tone to return the answer: this could be improved instead of the bullet points it give a proper answer like ' You need to buy ... '
 5. Rewrite the following paragraph in a professional, formal tone…
-    - Aspect Tested:
+    - Aspect Tested:(1)Formal tone : yes it changed the words to more formal, however it also made it more longer in a way - seemed like word changed to formal tone but it did not make it crisper, likely the prompt did not ask for it.
 
 This "vibe check" now serves as a baseline, of sorts, to help understand what holes your application has.
 
@@ -59,7 +59,7 @@ This "vibe check" now serves as a baseline, of sorts, to help understand what ho
 
 What are some limitations of vibe checking as an evaluation tool?
 ##### ✅ Answer:
-
+It is limited by the vibe checker's testing scenarios breadth. The tests might omit many scenarios and be too focussed on others. Also the interpretation of the results might be biased.
 ### 🚧 Advanced Build (OPTIONAL):
 
 Please make adjustments to your application that you believe will improve the vibe check you completed above, then deploy the changes to your Vercel domain [(see these instructions from your Challenge project)](https://github.com/AI-Maker-Space/The-AI-Engineer-Challenge/blob/main/README.md) and redo the above vibe check.
