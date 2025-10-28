@@ -39,18 +39,19 @@ Run the repository and complete the following:
 Compare the `agent` and `agent_helpful` assistants defined in `langgraph.json`. Where does the helpfulness evaluator fit in the graph, and under what condition should execution route back to the agent vs. terminate?
 
 ##### ✅ Answer:
-_(enter answer here)_
+With the helpfulness evaluater the agent now has 3 options - it can choose action , or evaluate the helpfullness of an actions response, or end. When the helpfulness evaluator returns 'N' (response is NOT helpful)- then the query is routed back to the agent to improve the response. If the evaluator returns a Y or if the loop limit is exceeded then the query is routed to terminate (or END). A Simple agent only has to chose between action and END with no evaluation on the response from the action. 
 
 #### 🏗️ Activity #1 Debugging A Graph
 
 Select the `agent_with_helpfulness` and set one or more interrupts (at least one `Before` and one `After`). Try changing values and continuing the turn. 
-
+-  I tried 3 interrupts one After agent, before action and after helpfulness 
 #### ❓ Question 2:
 
 What are your thoughts on when you would use a Before interrupt vs. an After interrupt?
 
 ##### ✅ Answer:
-_(enter answer here)_
+Typically the Before interrupts should be put in when we want to be able to modify something before the function or agent or whatever will use that input - so we can observe what happens with the change or we want to see the state of what was before and compare to after
+After interrupt is usually to see the state of parameters/variables etc after an action/function has run more for review/validation of result and decide if we want to continue .
 
 
 
