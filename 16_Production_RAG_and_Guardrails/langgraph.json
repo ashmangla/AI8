@@ -1,0 +1,17 @@
+
+{
+  "version": 1,
+  "dependencies": ["."],
+  "env": ".env",
+  "python_version": "3.13",
+  "graphs": {
+    "simple_agent": "langgraph_agent_lib.agents:graph"
+  },
+  "assistants": {
+    "agent": {
+      "graph_id": "simple_agent",
+      "name": "Simple Agent",
+      "description": "Agent with tools using conditional tool-calling."
+    }
+  }
+}
