@@ -88,6 +88,41 @@ What are the core components of an `AgentCard`?
 
 ##### ✅ Answer:
 
+An AgentCard is a metadata structure in the A2A protocol that describes an agent's capabilities and characteristics. Typically an Agent card may include:
+1. Identity: Name , Description , Version, Owner, tags/categories
+2. Capacilitites and Skills : Tools it can call, agents it integrates with , Skills or specialities
+3. Inpput -Output description: JSON or text, contraints like max token size
+4. Policies/Guardrails: Safety rules, escalation rules, thresholds limiting action, allowed/restricted tool use
+5. Memory/State ; Session context
+6. Behavior spec: ReAct, system prompt, when to use tools etc
+7. Execution settings: token limits, temp, model , timeout settings etc
+  Based on the implementation in `app/__main__.py`, the core components used here are:
+
+1. **`name`**: The display name of the agent (e.g., "General Purpose Agent")
+
+2. **`description`**: A text description of what the agent does and its purpose
+
+3. **`url`**: The base URL where the agent server is accessible (e.g., "http://localhost:10000/")
+
+4. **`version`**: The version of the agent implementation (e.g., "1.0.0")
+
+5. **`default_input_modes`**: List of content types the agent accepts (e.g., ['text', 'text/plain'])
+
+6. **`default_output_modes`**: List of content types the agent can produce (e.g., ['text', 'text/plain'])
+
+7. **`capabilities`**: An `AgentCapabilities` object that specifies:
+   - `streaming`: Whether the agent supports streaming responses
+   - `push_notifications`: Whether the agent supports push notifications
+
+8. **`skills`**: A list of `AgentSkill` objects, where each skill includes:
+   - `id`: Unique identifier for the skill
+   - `name`: Human-readable name of the skill
+   - `description`: What the skill does
+   - `tags`: Keywords for categorization
+   - `examples`: Example queries that demonstrate the skill
+
+The `AgentCard` serves as a "business card" that other agents can discover and use to understand what capabilities an agent offers, enabling agent-to-agent communication in the A2A protocol.
+
 <br />
 
 ### ❓ Question #2:
@@ -95,7 +130,11 @@ What are the core components of an `AgentCard`?
 Why is A2A (and other such protocols) important in your own words?
 
 ##### ✅ Answer:
-
+Protocol implies standardization of communication - which unlocks interoperability. Interoperability 
+in turn unlocks re-use , scalability, efficiency and composability
+With A2A it allows for reuse of agents across models, vendors, clouds etc to build composable workflows
+efficiently (speed of building) with fewer integration issues since the interfaces are well defined. 
+A2A standardization turns isolated AI agents into a connected fabric — unlocking scalability, innovation, and real-world automation at internet scale.
 <br /><br />
 
 <details>
