@@ -5,7 +5,8 @@ into LangGraph agent workflows, including input and output validation.
 """
 
 import logging
-from typing import Dict, Any, Optional, List
+import asyncio
+from typing import Dict, Any, Optional, List, Tuple, Callable
 from typing_extensions import TypedDict, Annotated
 
 from guardrails.hub import (
@@ -23,6 +24,41 @@ from langgraph.graph.message import add_messages
 
 # Set up logging
 logger = logging.getLogger(__name__)
+
+
+def _normalize_validation_results(
+    existing_results: Optional[Any],
+) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
+    """Return a dict-based structure and mutable guardrails list."""
+
+    if isinstance(existing_results, dict):
+        base_results = dict(existing_results)
+        guardrails_results = list(existing_results.get("guardrails", []))
+    elif isinstance(existing_results, list):
+        guardrails_results = list(existing_results)
+        base_results = {"guardrails": guardrails_results.copy()}
+    else:
+        base_results = {}
+        guardrails_results = []
+
+    return base_results, guardrails_results
+
+
+async def _run_guard_validation_async(func: Callable[..., Dict[str, Any]], *args) -> Dict[str, Any]:
+    """Execute blocking guard validation without blocking the event loop.
+
+    Falls back to synchronous execution if the executor task is cancelled.
+    """
+
+    loop = asyncio.get_running_loop()
+    try:
+        return await asyncio.shield(loop.run_in_executor(None, lambda: func(*args)))
+    except asyncio.CancelledError as exc:
+        logger.warning(
+            "Guard validation executor cancelled; retrying synchronously",
+            exc_info=True,
+        )
+        return func(*args)
 
 
 class GuardrailsState(TypedDict):
@@ -284,16 +320,23 @@ def create_guardrails_node(
             Updated state with validation results.
         """
         messages = state.get("messages", [])
-        validation_results = []
+        base_results, guardrails_results = _normalize_validation_results(
+            state.get("validation_results")
+        )
         
         if not messages:
-            return {"validation_results": []}
+            base_results.setdefault("guardrails", guardrails_results)
+            return {"validation_results": base_results}
         
         # Validate the last message
         last_message = messages[-1]
         
         try:
             if isinstance(last_message, HumanMessage) and input_guard:
+                logger.info(
+                    "Guardrails (input) validation started | snippet='%s'",
+                    last_message.content[:100].replace("\n", " ") if last_message.content else "",
+                )
                 # Validate user input
                 logger.debug("Validating user input with guardrails")
                 result = validate_input(
@@ -301,17 +344,26 @@ def create_guardrails_node(
                     last_message.content,
                     raise_on_failure=strict_mode
                 )
-                validation_results.append({
+                guardrails_results.append({
                     "type": "input",
                     "passed": result["validation_passed"],
                     "message": last_message.content[:100]
                 })
+
+                logger.info(
+                    "Guardrails (input) validation finished | passed=%s",
+                    result["validation_passed"],
+                )
                 
                 # If validation modified the input, we could update the message here
                 if not result["validation_passed"] and strict_mode:
                     logger.error(f"Input validation failed: {result.get('error')}")
             
             elif isinstance(last_message, AIMessage) and output_guard:
+                logger.info(
+                    "Guardrails (output) validation started | snippet='%s'",
+                    last_message.content[:100].replace("\n", " ") if last_message.content else "",
+                )
                 # Validate agent output
                 logger.debug("Validating agent output with guardrails")
                 result = validate_output(
@@ -319,11 +371,16 @@ def create_guardrails_node(
                     last_message.content,
                     raise_on_failure=strict_mode
                 )
-                validation_results.append({
+                guardrails_results.append({
                     "type": "output",
                     "passed": result["validation_passed"],
                     "message": last_message.content[:100]
                 })
+
+                logger.info(
+                    "Guardrails (output) validation finished | passed=%s",
+                    result["validation_passed"],
+                )
                 
                 if not result["validation_passed"] and strict_mode:
                     logger.error(f"Output validation failed: {result.get('error')}")
@@ -332,13 +389,154 @@ def create_guardrails_node(
             logger.error(f"Guardrails validation error: {e}", exc_info=True)
             if strict_mode:
                 raise
-            validation_results.append({
+            guardrails_results.append({
                 "type": "error",
                 "passed": False,
                 "error": str(e)
             })
-        
-        return {"validation_results": validation_results}
+        else:
+            if guardrails_results:
+                logger.info(
+                    "Guardrails validation summary | results=%s",
+                    [
+                        {
+                            "type": item.get("type"),
+                            "passed": item.get("passed"),
+                        }
+                        for item in guardrails_results
+                    ],
+                )
+
+        base_results["guardrails"] = guardrails_results
+        return {"validation_results": base_results}
     
+    return guardrails_node
+
+
+async def validate_input_async(
+    guard: Guard,
+    user_input: str,
+    raise_on_failure: bool = True,
+) -> Dict[str, Any]:
+    """Async wrapper around validate_input using a thread executor."""
+    return await _run_guard_validation_async(
+        validate_input,
+        guard,
+        user_input,
+        raise_on_failure,
+    )
+
+
+async def validate_output_async(
+    guard: Guard,
+    agent_response: str,
+    context: Optional[str] = None,
+    raise_on_failure: bool = True,
+) -> Dict[str, Any]:
+    """Async wrapper around validate_output using a thread executor."""
+    return await _run_guard_validation_async(
+        validate_output,
+        guard,
+        agent_response,
+        context,
+        raise_on_failure,
+    )
+
+
+def create_guardrails_node_async(
+    input_guard: Optional[Guard] = None,
+    output_guard: Optional[Guard] = None,
+    strict_mode: bool = True,
+):
+    """Async variant of create_guardrails_node for non-blocking guard validation."""
+
+    async def guardrails_node(state: GuardrailsState) -> Dict[str, Any]:
+        messages = state.get("messages", [])
+        base_results, guardrails_results = _normalize_validation_results(
+            state.get("validation_results")
+        )
+
+        if not messages:
+            base_results.setdefault("guardrails", guardrails_results)
+            return {"validation_results": base_results}
+
+        last_message = messages[-1]
+
+        try:
+            if isinstance(last_message, HumanMessage) and input_guard:
+                logger.info(
+                    "Guardrails (async input) validation started | snippet='%s'",
+                    last_message.content[:100].replace("\n", " ") if last_message.content else "",
+                )
+                result = await validate_input_async(
+                    input_guard,
+                    last_message.content,
+                    raise_on_failure=strict_mode,
+                )
+                guardrails_results.append(
+                    {
+                        "type": "input",
+                        "passed": result["validation_passed"],
+                        "message": last_message.content[:100],
+                    }
+                )
+                logger.info(
+                    "Guardrails (async input) validation finished | passed=%s",
+                    result["validation_passed"],
+                )
+                if not result["validation_passed"] and strict_mode:
+                    logger.error(f"Async input validation failed: {result.get('error')}")
+
+            elif isinstance(last_message, AIMessage) and output_guard:
+                logger.info(
+                    "Guardrails (async output) validation started | snippet='%s'",
+                    last_message.content[:100].replace("\n", " ") if last_message.content else "",
+                )
+                result = await validate_output_async(
+                    output_guard,
+                    last_message.content,
+                    raise_on_failure=strict_mode,
+                )
+                guardrails_results.append(
+                    {
+                        "type": "output",
+                        "passed": result["validation_passed"],
+                        "message": last_message.content[:100],
+                    }
+                )
+                logger.info(
+                    "Guardrails (async output) validation finished | passed=%s",
+                    result["validation_passed"],
+                )
+                if not result["validation_passed"] and strict_mode:
+                    logger.error(f"Async output validation failed: {result.get('error')}")
+
+        except Exception as exc:
+            logger.error("Guardrails async validation error: %s", exc, exc_info=True)
+            if strict_mode:
+                raise
+            guardrails_results.append(
+                {
+                    "type": "error",
+                    "passed": False,
+                    "error": str(exc),
+                }
+            )
+
+        if guardrails_results:
+            logger.info(
+                "Guardrails async validation summary | results=%s",
+                [
+                    {
+                        "type": item.get("type"),
+                        "passed": item.get("passed"),
+                    }
+                    for item in guardrails_results
+                ],
+            )
+
+        base_results["guardrails"] = guardrails_results
+        return {"validation_results": base_results}
+
     return guardrails_node
 

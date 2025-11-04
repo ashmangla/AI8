@@ -1,17 +1,22 @@
-
 {
   "version": 1,
   "dependencies": ["."],
   "env": ".env",
   "python_version": "3.13",
   "graphs": {
-    "simple_agent": "langgraph_agent_lib.agents:graph"
+    "simple_agent": "langgraph_agent_lib.agents:graph",
+    "helpfulness_agent": "langgraph_agent_lib.helpfulness_agents:graph"
   },
   "assistants": {
     "agent": {
       "graph_id": "simple_agent",
       "name": "Simple Agent",
       "description": "Agent with tools using conditional tool-calling."
+    },
+    "helpfulness_agent": {
+      "graph_id": "helpfulness_agent",
+      "name": "Helpfulness Agent",
+      "description": "Agent with tools using conditional tool-calling and helpfulness evaluation."
     }
   }
 }
