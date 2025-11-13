@@ -21,6 +21,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
+from langchain_together import ChatTogether
 from langchain_openai.embeddings import OpenAIEmbeddings
 from langgraph.graph import START, StateGraph
 from typing_extensions import TypedDict
@@ -86,7 +87,11 @@ def _build_rag_graph(data_dir: str) -> "CompiledGraph":
         "Only use the provided context to answer the query. If you do not know the answer, or it's not contained in the provided context respond with \"I don't know\""
     )
     chat_prompt = ChatPromptTemplate.from_messages([("human", human_template)])
-    generator_llm = ChatOpenAI(model=os.environ.get("OPENAI_CHAT_MODEL", "gpt-4.1-nano"))
+    
+    generator_llm = ChatTogether(
+        model=os.environ.get("TOGETHER_MODEL", "openai/gpt-oss-20b"),
+        together_api_key=os.environ.get("TOGETHER_API_KEY")
+    )
 
     def retrieve(state: _RAGState) -> _RAGState:
         retrieved_docs = retriever.invoke(state["question"]) if retriever else []
